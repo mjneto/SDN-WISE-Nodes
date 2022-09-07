@@ -52,6 +52,9 @@ import java.util.logging.*;
 import org.contikios.cooja.*;
 import org.contikios.cooja.interfaces.*;
 import org.contikios.cooja.motes.AbstractApplicationMote;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.regex.*;
 
 /**
  * Example SdnWise mote.
@@ -63,6 +66,15 @@ import org.contikios.cooja.motes.AbstractApplicationMote;
 public abstract class AbstractMote extends AbstractApplicationMote {
 
     public ArrayList<Integer> statusRegister = new ArrayList<>();
+    public ArrayList<byte[]> CopyPacket = new ArrayList<byte[]>();
+    public ArrayList<String> StringCopyPacket = new ArrayList<String>();
+
+    public String CopiaAgregada = "";
+
+    private float Rate = 1;
+
+    //variavel criada para contabilizar mensagens
+    private static int count = 0;
 
     private Simulation simulation = null;
     private Random random = null;
@@ -110,13 +122,20 @@ public abstract class AbstractMote extends AbstractApplicationMote {
     HashMap<Integer, FunctionInterface> functions = new HashMap<>();
     Logger MeasureLOGGER;
 
+    public float getRate() {        
+        return this.Rate;
+    }
+
+    public void setRate(float rate) {
+        this.Rate = rate;
+    }
+
     public AbstractMote() {
         super();
     }
 
     public AbstractMote(MoteType moteType, Simulation simulation) {
         super(moteType, simulation);
-        /**/
     }
 
     @Override
@@ -199,7 +218,7 @@ public abstract class AbstractMote extends AbstractApplicationMote {
         if (np.getType() > 7 && !np.isRequest()) {
             sentDataBytes += np.getPayloadSize();
         }
-
+        
         battery.transmitRadio(np.getLen());
         np.decrementTtl();
         RadioPacket pk = new COOJARadioPacket(np.toByteArray());
@@ -223,10 +242,63 @@ public abstract class AbstractMote extends AbstractApplicationMote {
         return ((AbstractForwardAction) (flowTable.get(0).getActions().get(0))).getNextHop();
     }
 
+/*
+ *
+ * Aqui a cópia da mensagem é feita para o buffer de agregação 
+ *
+ */
     public final void rxData(DataPacket packet) {
-        if (isAcceptedIdPacket(packet)) {
-            SDN_WISE_Callback(packet);
-        } else if (isAcceptedIdAddress(packet.getNxhop())) {
+	if (packet.getSrc() == addr) {
+
+	}else{
+
+	}     
+
+    //mensagem do controlador
+    if (packet.getDst().equals(addr)){
+        //log("chegou no destino, origem : " + packet.getSrc() 
+        //    + "Com o conteudo: " + new String(packet.getPayload()));
+        if(new String(packet.getPayload()).substring(0,3).equals("Agg")){
+            String[] txt = new String(packet.getPayload()).split(":");
+
+            setRate(Float.parseFloat(txt[1]));
+        }
+    }
+	
+    if (isAcceptedIdPacket(packet)) {
+        String txt = "";
+
+        txt = txt + new String(packet.getPayload());
+        String[] txtSplit = new String(txt).split(";");
+
+        count += txtSplit.length;
+        
+        if (new String(packet.getPayload()).substring(0,1).equals("P")) {
+            /*log("Volume: " + txt + " count: " + count 
+                + " tamanho: "+ packet.getPayload().length);*/
+            log("Traffic: " + (packet.getPayload().length * count) 
+                + " Battery P: " + String.valueOf(battery.getBatteryPercent() / 2.55)
+                + " Battery L: " + String.valueOf(battery.getBatteryLevel())); 
+        }  
+
+        SDN_WISE_Callback(packet);
+        /*log("chegou no destino, origem : " + packet.getSrc() 
+            + " Com o conteudo: " + new String(packet.getPayload()) 
+            + " count: " + count + " tamanho: "+ packet.getPayload().length);*/
+        log("Traffic: " + (packet.getPayload().length * count) 
+            + " Battery: " + String.valueOf(battery.getBatteryPercent() / 2.55)
+            + " Battery L: " + String.valueOf(battery.getBatteryLevel()));
+    
+    } else if (isAcceptedIdAddress(packet.getNxhop())) { 
+
+            if (new String(packet.getPayload()).substring(0,1).equals("P")) {
+                CopyMenssage(packet);
+
+                packet.setTtl((byte) 0);
+            }
+
+            //O Ttl é 0 para que a mensagem inicial do nó seja exluida
+            //packet.setTtl((byte) 0); 
             runFlowMatch(packet);
         }
     }
@@ -283,6 +355,7 @@ public abstract class AbstractMote extends AbstractApplicationMote {
     public abstract void controllerTX(NetworkPacket pck);
 
     public int marshalPacket(ConfigPacket packet) {
+	//log("marshalpacket");
         int toBeSent = 0;
         int pos;
         boolean isWrite = packet.isWrite();
@@ -294,6 +367,7 @@ public abstract class AbstractMote extends AbstractApplicationMote {
                     addr = new NodeAddress(value);
                     break;
                 case SDN_WISE_CNF_ID_NET_ID:
+		    //log("net id");
                     net_id = packet.getPayloadAt(2);
                     break;
                 case SDN_WISE_CNF_ID_CNT_BEACON_MAX:
@@ -309,9 +383,11 @@ public abstract class AbstractMote extends AbstractApplicationMote {
                     cnt_sleep_max = value;
                     break;
                 case SDN_WISE_CNF_ID_TTL_MAX:
+		    //log("ttl max");
                     ttl_max = packet.getPayloadAt(2);
                     break;
                 case SDN_WISE_CNF_ID_RSSI_MIN:
+		    //log("rssi min");
                     rssi_min = packet.getPayloadAt(2);
                     break;
                 case SDN_WISE_CNF_ADD_ACCEPTED:
@@ -336,6 +412,7 @@ public abstract class AbstractMote extends AbstractApplicationMote {
                     //TODO
                     break;
                 case SDN_WISE_CNF_ADD_FUNCTION:
+		    //log("add function");
                     if (functionBuffer.get(value) == null) {
                         functionBuffer.put(value, new LinkedList<int[]>());
                     }
@@ -421,6 +498,7 @@ public abstract class AbstractMote extends AbstractApplicationMote {
                     controllerTX(packetList);
                     break;
                 case SDN_WISE_CNF_GET_RULE_INDEX:
+		    //log("rule index");
                     toBeSent = 0;
                     ConfigRulePacket packetRule = new ConfigRulePacket(
                             net_id,
@@ -442,6 +520,7 @@ public abstract class AbstractMote extends AbstractApplicationMote {
     }
 
     private void timerTask() {
+	//log("timer task");
         if (semaphore == 1 && battery.getBatteryLevel() > 0) {
             battery.keepAlive(1);
 
@@ -673,6 +752,7 @@ public abstract class AbstractMote extends AbstractApplicationMote {
 
         addr = new NodeAddress(this.getID());
         net_id = (byte) 1;
+        //log("Node " + addr.intValue() + " started");
 
         simulation = getSimulation();
         random = simulation.getRandomGenerator();
@@ -703,6 +783,9 @@ public abstract class AbstractMote extends AbstractApplicationMote {
 
         new Thread(new PacketManager()).start();
         new Thread(new PacketSender()).start();
+        new Thread(new MensegerCreator()).start(); //gabrielgomes
+        //new thread
+        new Thread(new BatteryManager()).start(); 
     }
 
     private int getOperand(NetworkPacket packet, int size, int location, int value) {
@@ -985,6 +1068,7 @@ public abstract class AbstractMote extends AbstractApplicationMote {
     }
 
     void logTask() {
+        //log("grafico");
         MeasureLOGGER.log(Level.FINEST,
                 // NODE;BATTERY LVL(mC);BATTERY LVL(%);NO. RULES INSTALLED; B SENT; B RECEIVED;
                 "{0},{1},{2},{3},{4},{5},{6},{7}",
@@ -1035,6 +1119,134 @@ public abstract class AbstractMote extends AbstractApplicationMote {
                 }
             } catch (InterruptedException ex) {
                 log(ex.getLocalizedMessage());
+            }
+        }
+    }
+
+    //Aqui a mensagem é criada
+    private class MensegerCreator implements Runnable {
+        //criar nova classe
+
+        @Override
+        public void run() {
+            try{
+                Thread.sleep(60000);
+                while (true) {
+                    DataPacket p = new DataPacket(1,addr,getActualSinkAddress());
+            
+                    p.setSrc(addr)
+                                    .setDst(getActualSinkAddress())
+                                    .setTtl((byte) ttl_max);
+
+                    String myAddr = addr.toString();
+
+                    String agregada = myAddr;
+
+                    for(byte[] mensagem : CopyPacket) {
+                        agregada = agregada + new String(mensagem,Charset.forName("UTF-8"));
+                    }
+
+                    log("antes da agg: " + agregada);
+
+                    //retorno da taxa de agregação
+                    int output = ComputeOutputPayload();
+                    
+                    //criação da mensagem agragada com variação da taxa de agregação
+                    //if (output == 1 && (agregada.length() < 7) == true) { //transformar ele em uma variavel    
+                    
+                    //log("mensagem: " + agregada);
+
+                    if (output == 1 && (agregada.contains(";P")) == false) {
+
+                        p.setPayload(("P " + addr + ";")
+                            .getBytes(Charset.forName("UTF-8")));
+
+                        log("depois da agg: " + 
+                            new String(p.getPayload(),Charset.forName("UTF-8")));
+
+                    } else {
+
+                        String texto = "";
+
+                        texto = agregada.substring(0, (output * 6)); //não usar o 6 e sim um delimitador
+
+                        log("depois da agg: " + texto);
+                        //+ "origem da mensagem: " + p.getSrc() + "trafego da mensagem anterior" + count * texto);
+
+                        p.setPayload((texto)
+                            .getBytes(Charset.forName("UTF-8")));
+
+                    }
+
+                    //log(new String(p.getPayload(),Charset.forName("UTF-8")));
+            
+                    runFlowMatch(p);
+
+                    CopyPacket.clear();
+
+                    Thread.sleep(20000);
+                }
+            } catch (InterruptedException ex) {
+                log(ex.getLocalizedMessage()); 
+            } 
+        }
+    }
+    
+    //Insere payload no buffer de agregação
+    public void CopyMenssage(DataPacket p) {       	
+        if(p.getDst() != addr){
+            CopyPacket.add(p.getPayload());
+	    }
+    }
+
+    public int ComputeOutputPayload() {
+        int input;
+        float rate = 1 - getRate();     //Math.round(1 - getRate());
+        int output;
+        String agregada = "";
+
+        for(byte[] mensagem : CopyPacket) {
+            agregada = agregada + new String(mensagem,Charset.forName("UTF-8"));
+        }        
+
+        String[] textoSeparado = agregada.split(";");
+
+        //O input ele pega a quantidade de elementos(pacotes) que se tem no vetor.
+        //O acrescimo de +1 é por conta de o input não contar com o próprio pacote criado pelo nó
+        input = (textoSeparado.length) + 1; 
+        
+        output = Math.round(rate * input);
+
+        if (output == 0 ){
+            output++;
+        }
+
+        //log("output " + output);
+        //log("input " + input);
+        log("rate " + rate);
+
+        return output;
+    }
+
+    private class BatteryManager implements Runnable {
+
+        @Override
+        public void run() {
+
+            long time = 5000000; // 5 seconds
+
+            while (true) {
+                //check if addr is even (change later)
+                if (addr.intValue() % 2 == 0) {
+    
+                    //check simulation time passed 5 seconds
+                    if(simulation.getSimulationTime() > time) {
+
+                        time = time + 5000000;
+                        //call recharge battery method
+
+                    }
+                }
             }
         }
     }

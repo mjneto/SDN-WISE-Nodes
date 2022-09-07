@@ -51,10 +51,14 @@ public class Mote extends AbstractMote {
     @Override
     public void SDN_WISE_Callback(DataPacket packet) {
         if (this.functions.get(1) == null) {
-            log(new String(packet.getPayload(),Charset.forName("UTF-8")));
             packet.setSrc(addr)
                     .setDst(getActualSinkAddress())
                     .setTtl((byte) ttl_max);
+
+            packet.setPayload(("P " + addr + ";").getBytes(Charset.forName("UTF-8")));
+            
+            packet.setTtl((byte) 0);
+
             runFlowMatch(packet);
         } else {
             this.functions.get(1).function(adcRegister,
@@ -113,6 +117,7 @@ public class Mote extends AbstractMote {
         NodeAddress dest = packet.getDst();
         if (!dest.equals(addr)) {
             runFlowMatch(packet);
+            log("teste " + new String(packet.getPayload(),Charset.forName("UTF-8")));
         } else {
             if (this.marshalPacket(packet) != 0) {
                 packet.setSrc(addr);

@@ -16,6 +16,8 @@
  */
 package com.github.sdnwiselab.sdnwise.cooja;
 
+import java.util.Random;
+
 /**
  * This class simulates the behavior of a Battery of a simulated Wireless Sensor
  * Node. The values are calculated considering the datasheet of a real sensor
@@ -25,8 +27,8 @@ package com.github.sdnwiselab.sdnwise.cooja;
  */
 public class Battery {
 
-    private final static double maxLevel = 5000;    // 9000000 mC = 2 AAA batteries = 15 Days  
-    // 5000 mC = 12 min 
+    private final static double maxLevel = 13000;    // 9000000 mC = 2 AAA batteries = 15 Days  
+    // 5000 mC = 12 min; 12500 mC = 30 min; 25000 mC = 60 min
     private final static double keepAlive = 6.8;        // mC spent every 1 s
     private final static double transmitRadio = 0.0027; // mC to send 1byte
     private final static double receiveRadio = 0.00094; // mC to receive 1byte
@@ -71,6 +73,7 @@ public class Battery {
     public Battery transmitRadio(int nBytes) {
         double new_val = this.batteryLevel - Battery.transmitRadio * nBytes;
         this.setBatteryLevel(new_val);
+        this.updateBattery();
         return this;
     }
 
@@ -83,6 +86,7 @@ public class Battery {
     public Battery receiveRadio(int nBytes) {
         double new_val = this.batteryLevel - Battery.receiveRadio * nBytes;
         this.setBatteryLevel(new_val);
+        this.updateBattery();
         return this;
     }
 
@@ -95,6 +99,7 @@ public class Battery {
     public Battery keepAlive(int nSeconds) {
         double new_val = this.batteryLevel - Battery.keepAlive * nSeconds;
         this.setBatteryLevel(new_val);
+        this.updateBattery();
         return this;
     }
 
@@ -109,5 +114,26 @@ public class Battery {
         } else {
             return 0;
         }
+    }
+    
+    /* 
+     * Gera valores aleatórios para o nível da bateria.
+     * Se o nível da bateria está pela metade, gera um valor entre 100 e 200,
+     * e acresenta ao nível atual.
+    */
+    public Battery updateBattery() {
+        if (this.getBatteryLevel() <= 12500) {
+            Random random = new Random();
+
+            double energy_harvest = this.getBatteryLevel() + ((random.nextInt(100)+100)+random.nextDouble());
+            //log("energy_harvest: " + energy_harvest + " Battery: " + this.batteryLevel);
+            if (energy_harvest > Battery.maxLevel) {
+                this.setBatteryLevel(Battery.maxLevel);;
+            } else {
+                this.setBatteryLevel(energy_harvest);
+            }
+            
+        }
+        return this;
     }
 }
