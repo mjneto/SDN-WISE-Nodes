@@ -73,7 +73,6 @@ public class Battery {
     public Battery transmitRadio(int nBytes) {
         double new_val = this.batteryLevel - Battery.transmitRadio * nBytes;
         this.setBatteryLevel(new_val);
-        this.updateBattery();
         return this;
     }
 
@@ -86,7 +85,6 @@ public class Battery {
     public Battery receiveRadio(int nBytes) {
         double new_val = this.batteryLevel - Battery.receiveRadio * nBytes;
         this.setBatteryLevel(new_val);
-        this.updateBattery();
         return this;
     }
 
@@ -99,7 +97,6 @@ public class Battery {
     public Battery keepAlive(int nSeconds) {
         double new_val = this.batteryLevel - Battery.keepAlive * nSeconds;
         this.setBatteryLevel(new_val);
-        this.updateBattery();
         return this;
     }
 
@@ -121,18 +118,14 @@ public class Battery {
      * Se o nível da bateria está pela metade, gera um valor entre 100 e 200,
      * e acresenta ao nível atual.
     */
-    public Battery updateBattery() {
-        if (this.getBatteryLevel() <= 12500) {
-            Random random = new Random();
-
-            double energy_harvest = this.getBatteryLevel() + ((random.nextInt(100)+100)+random.nextDouble());
-            //log("energy_harvest: " + energy_harvest + " Battery: " + this.batteryLevel);
-            if (energy_harvest > Battery.maxLevel) {
-                this.setBatteryLevel(Battery.maxLevel);;
-            } else {
-                this.setBatteryLevel(energy_harvest);
-            }
-            
+    public Battery rechargeBattery() {
+        Random random = new Random();
+        double energy_harvest = this.getBatteryLevel() + ((random.nextInt(100)+100)+random.nextDouble());
+        
+        if (energy_harvest > Battery.maxLevel) {
+            this.setBatteryLevel(Battery.maxLevel);
+        } else {
+            this.setBatteryLevel(energy_harvest);
         }
         return this;
     }

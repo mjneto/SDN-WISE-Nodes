@@ -1125,7 +1125,6 @@ public abstract class AbstractMote extends AbstractApplicationMote {
 
     //Aqui a mensagem é criada
     private class MensegerCreator implements Runnable {
-        //criar nova classe
 
         @Override
         public void run() {
@@ -1233,18 +1232,19 @@ public abstract class AbstractMote extends AbstractApplicationMote {
         @Override
         public void run() {
 
-            long time = 5000000; // 5 seconds
-
             while (true) {
+                //log(String.valueOf(step));
+
                 //check if addr is even (change later)
-                if (addr.intValue() % 2 == 0) {
-    
-                    //check simulation time passed 5 seconds
-                    if(simulation.getSimulationTime() > time) {
+                if(addr.intValue() % 2 == 0) {
+                    try {
+                        Thread.sleep(5000);
+                        log("Battery");
 
-                        time = time + 5000000;
                         //call recharge battery method
-
+                        battery.rechargeBattery();
+                    } catch (InterruptedException ex) {
+                        log(ex.getLocalizedMessage());
                     }
                 }
             }
