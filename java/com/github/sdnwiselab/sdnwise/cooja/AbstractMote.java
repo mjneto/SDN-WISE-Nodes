@@ -1228,26 +1228,63 @@ public abstract class AbstractMote extends AbstractApplicationMote {
     }
 
     private class BatteryManager implements Runnable {
+        /**
+         * @author mjneto
+        */
 
         @Override
         public void run() {
 
+            boolean hasHarvest;
+            int rechargeStep = 84;
+            int ciclePassed = 0;
+
+            //select the rechargeable nodes
+            hasHarvest = isRechargeable();
+
+            //log(String.valueOf(hasHarvest));
+
             while (true) {
-                //log(String.valueOf(step));
+                //check if node is rechargeable
+                if(hasHarvest) {
 
-                //check if addr is even (change later)
-                if(addr.intValue() % 2 == 0) {
                     try {
+                        //Thread sleep for 5 minutes
+                        //Thread.sleep(300000);
+                        
+                        //sleep for 5 seconds
                         Thread.sleep(5000);
-                        log("Battery");
 
-                        //call recharge battery method
-                        battery.rechargeBattery();
+                        //log("Battery step: " + String.valueOf(rechargeStep) + " Day: " + String.valueOf(ciclePassed));
+
+                        //call rechargeBattery method and increment the rechargeStep
+                        if(ciclePassed <= 2 && rechargeStep <= 287) {
+                            battery.rechargeBattery(ciclePassed, rechargeStep);
+                            rechargeStep++;
+                        } else {
+                            ciclePassed++;
+                            rechargeStep = 0;
+                            battery.rechargeBattery(ciclePassed, rechargeStep);
+                        }
                     } catch (InterruptedException ex) {
                         log(ex.getLocalizedMessage());
                     }
                 }
             }
+        }
+
+        //set a variable to simulate rechargeable nodes
+        public boolean isRechargeable() {
+            //array with node ids who will be rechargeable (user defined)
+            int[] rechargeableNodes = {3, 5, 8, 10};
+
+            //check if node is rechargeable and set hasHarvest
+            for(int i = 0; i < rechargeableNodes.length; i++) {
+                if(addr.intValue() == rechargeableNodes[i]) {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }

@@ -16,7 +16,7 @@
  */
 package com.github.sdnwiselab.sdnwise.cooja;
 
-import java.util.Random;
+import com.github.sdnwiselab.sdnwise.cooja.SolarTrace;
 
 /**
  * This class simulates the behavior of a Battery of a simulated Wireless Sensor
@@ -113,19 +113,23 @@ public class Battery {
         }
     }
     
-    /* 
-     * Gera valores aleatórios para o nível da bateria.
-     * Se o nível da bateria está pela metade, gera um valor entre 100 e 200,
-     * e acresenta ao nível atual.
+    /**
+     * This method simulate the recharge of the battery.
+     * @param cicle the number of the cicle of the simulation, incremental
+     * @param step control the index of the value to be read (5 to 5 minutes), incremental
+     * 
+     * @return the Battery object
+     * 
+     * @author mjneto
     */
-    public Battery rechargeBattery() {
-        Random random = new Random();
-        double energy_harvest = this.getBatteryLevel() + ((random.nextInt(100)+100)+random.nextDouble());
-        
-        if (energy_harvest > Battery.maxLevel) {
+    public Battery rechargeBattery(int  cicle, int step) {
+        double energyHarvested = SolarTrace.getSolarTraceValue(cicle, step);
+        double new_val = this.batteryLevel + energyHarvested;
+
+        if(new_val > Battery.maxLevel){
             this.setBatteryLevel(Battery.maxLevel);
         } else {
-            this.setBatteryLevel(energy_harvest);
+            this.setBatteryLevel(new_val);
         }
         return this;
     }
