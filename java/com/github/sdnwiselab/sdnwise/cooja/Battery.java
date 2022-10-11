@@ -16,8 +16,6 @@
  */
 package com.github.sdnwiselab.sdnwise.cooja;
 
-import com.github.sdnwiselab.sdnwise.cooja.SolarTrace;
-
 /**
  * This class simulates the behavior of a Battery of a simulated Wireless Sensor
  * Node. The values are calculated considering the datasheet of a real sensor
@@ -27,7 +25,7 @@ import com.github.sdnwiselab.sdnwise.cooja.SolarTrace;
  */
 public class Battery {
 
-    private final static double maxLevel = 13000;    // 9000000 mC = 2 AAA batteries = 15 Days  
+    private final static double maxLevel = 9000000;    // 9000000 mC = 2 AAA batteries = 15 Days  
     // 5000 mC = 12 min; 12500 mC = 30 min; 25000 mC = 60 min
     private final static double keepAlive = 6.8;        // mC spent every 1 s
     private final static double transmitRadio = 0.0027; // mC to send 1byte

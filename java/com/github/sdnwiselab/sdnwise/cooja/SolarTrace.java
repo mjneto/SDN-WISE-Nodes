@@ -9,6 +9,8 @@ package com.github.sdnwiselab.sdnwise.cooja;
      * The dataset is a 2D array of values in microWatts per square meter.
      * It has a method to get the value of the dataset, converting it to
      * microCoulombs per second.
+     * 
+     * @author mjneto, André Riker
 */
 
 public class SolarTrace {
@@ -16,7 +18,7 @@ public class SolarTrace {
     private static double[][] SolarTraceInMW = {
         //values in microwatt/cm2, each line is a day and each day has 288 values
         { //day 1 (line 1)
-        //0hsquare meter
+        //0h
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         //5h
@@ -107,14 +109,14 @@ public class SolarTrace {
     public static double getSolarTraceValue(int cicle, int step) {
         //calculate the current in coulombs (current * time), time is 5 minutes in seconds
         currentInCoulomb = calculateCurrent(cicle, step) * 300;
-        return currentInCoulomb;
+        return currentInCoulomb / 1000;
     }
 
-    //calcuate the current (solar trace value * solar panel efficiency * voltage * panel area)
+    //calcuate current = solar trace value * solar panel efficiency * voltage * panel area
     public static double calculateCurrent(int cicle, int step) {
-        double solarPanelEfficiency = 0.2;
-        double voltage = 0.2;
-        double panelArea = 210;
+        double solarPanelEfficiency = 0.2; //20%
+        double voltage = 0.2; //1/5v
+        double panelArea = 210; //cm2
 
         return (SolarTraceInMW[cicle][step] * solarPanelEfficiency * voltage * panelArea);
     }

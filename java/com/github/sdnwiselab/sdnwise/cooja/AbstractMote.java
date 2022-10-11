@@ -1236,7 +1236,7 @@ public abstract class AbstractMote extends AbstractApplicationMote {
         public void run() {
 
             boolean hasHarvest;
-            int rechargeStep = 84;
+            int rechargeStep = 0;
             int ciclePassed = 0;
 
             //select the rechargeable nodes
@@ -1250,19 +1250,23 @@ public abstract class AbstractMote extends AbstractApplicationMote {
 
                     try {
                         //Thread sleep for 5 minutes
-                        //Thread.sleep(300000);
+                        Thread.sleep(300000);
                         
                         //sleep for 5 seconds
-                        Thread.sleep(5000);
+                        //Thread.sleep(5000);
 
                         //log("Battery step: " + String.valueOf(rechargeStep) + " Day: " + String.valueOf(ciclePassed));
 
                         //call rechargeBattery method and increment the rechargeStep
-                        if(ciclePassed <= 2 && rechargeStep <= 287) {
+                        if(rechargeStep <= 287) {
                             battery.rechargeBattery(ciclePassed, rechargeStep);
                             rechargeStep++;
-                        } else {
+                        } else if (ciclePassed < 3) {
                             ciclePassed++;
+                            rechargeStep = 0;
+                            battery.rechargeBattery(ciclePassed, rechargeStep);
+                        } else {
+                            ciclePassed = 0;
                             rechargeStep = 0;
                             battery.rechargeBattery(ciclePassed, rechargeStep);
                         }
