@@ -25,7 +25,7 @@ package com.github.sdnwiselab.sdnwise.cooja;
  */
 public class Battery {
 
-    private final static double maxLevel = 9000000;    // 9000000 mC = 2 AAA batteries = 15 Days  
+    private final static double maxLevel = 450000;    // 9000000 mC = 2 AAA batteries = 15 Days  
     // 5000 mC = 12 min; 12500 mC = 30 min; 25000 mC = 60 min
     private final static double keepAlive = 6.8;        // mC spent every 1 s
     private final static double transmitRadio = 0.0027; // mC to send 1byte
@@ -104,11 +104,7 @@ public class Battery {
      * @return the Battery level in the range [0-255].
      */
     public int getBatteryPercent() {
-        if (Battery.maxLevel != 0) {
-            return (int) ((this.batteryLevel / Battery.maxLevel) * 255);
-        } else {
-            return 0;
-        }
+        return (int) ((this.batteryLevel / Battery.maxLevel) * 255);
     }
     
     /**

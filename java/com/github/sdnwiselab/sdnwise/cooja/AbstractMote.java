@@ -53,8 +53,6 @@ import org.contikios.cooja.*;
 import org.contikios.cooja.interfaces.*;
 import org.contikios.cooja.motes.AbstractApplicationMote;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.regex.*;
 
 /**
  * Example SdnWise mote.
@@ -73,8 +71,8 @@ public abstract class AbstractMote extends AbstractApplicationMote {
 
     private float Rate = 1;
 
-    //variavel criada para contabilizar mensagens
-    private static int count = 0;
+    //variavel criada para contabilizar mensagens - Gabriel Gomes
+    private static int countAggPayloadsMsg = 0;
 
     private Simulation simulation = null;
     private Random random = null;
@@ -239,68 +237,63 @@ public abstract class AbstractMote extends AbstractApplicationMote {
     }
 
     public final NodeAddress getNextHopVsSink() {
+        //log("Next Hop Size: " + flowTable.size());
+        //log("getNextHop Action: " + flowTable.get(0).getActions().toString());
         return ((AbstractForwardAction) (flowTable.get(0).getActions().get(0))).getNextHop();
     }
 
-/*
- *
- * Aqui a cópia da mensagem é feita para o buffer de agregação 
- *
- */
     public final void rxData(DataPacket packet) {
-	if (packet.getSrc() == addr) {
-
-	}else{
-
-	}     
-
-    //mensagem do controlador
-    if (packet.getDst().equals(addr)){
-        //log("chegou no destino, origem : " + packet.getSrc() 
-        //    + "Com o conteudo: " + new String(packet.getPayload()));
-        if(new String(packet.getPayload()).substring(0,3).equals("Agg")){
-            String[] txt = new String(packet.getPayload()).split(":");
-
-            setRate(Float.parseFloat(txt[1]));
-        }
-    }
-	
-    if (isAcceptedIdPacket(packet)) {
-        String txt = "";
-
-        txt = txt + new String(packet.getPayload());
-        String[] txtSplit = new String(txt).split(";");
-
-        count += txtSplit.length;
-        
-        if (new String(packet.getPayload()).substring(0,1).equals("P")) {
-            /*log("Volume: " + txt + " count: " + count 
-                + " tamanho: "+ packet.getPayload().length);*/
-            log("Traffic: " + (packet.getPayload().length * count) 
-                + " Battery P: " + String.valueOf(battery.getBatteryPercent() / 2.55)
-                + " Battery L: " + String.valueOf(battery.getBatteryLevel())); 
-        }  
-
-        SDN_WISE_Callback(packet);
-        /*log("chegou no destino, origem : " + packet.getSrc() 
-            + " Com o conteudo: " + new String(packet.getPayload()) 
-            + " count: " + count + " tamanho: "+ packet.getPayload().length);*/
-        log("Traffic: " + (packet.getPayload().length * count) 
-            + " Battery: " + String.valueOf(battery.getBatteryPercent() / 2.55)
-            + " Battery L: " + String.valueOf(battery.getBatteryLevel()));
-    
-    } else if (isAcceptedIdAddress(packet.getNxhop())) { 
-
-            if (new String(packet.getPayload()).substring(0,1).equals("P")) {
-                CopyMenssage(packet);
-
-                packet.setTtl((byte) 0);
+        /* Aqui a cópia da mensagem é feita para o buffer de agregação
+ *
+         * mensagem do controlador
+ *
+         * O Ttl é 0 para que a mensagem inicial do nó seja exluida
+         *
+         * Agregação de dados ao receber o pacote (rxData()) por Gabriel Gomes
+ */
+        if (packet.getDst().equals(addr)){
+            //log("chegou no destino, origem: " + packet.getSrc() + " Com o conteudo: " + new String(packet.getPayload()));
+            
+            if(new String(packet.getPayload()).substring(0,3).equals("Agg")){
+                String rateCtrl = new String(packet.getPayload()).split(":")[1];
+                //log("Agg: " + Float.parseFloat(txt[1]));
+                setRate(Float.parseFloat(rateCtrl));
             }
-
-            //O Ttl é 0 para que a mensagem inicial do nó seja exluida
-            //packet.setTtl((byte) 0); 
-            runFlowMatch(packet);
         }
+	
+        if (isAcceptedIdPacket(packet)) {
+            String payloadMsg = "";
+
+            payloadMsg = payloadMsg + new String(packet.getPayload());
+            String[] payloadMsgSplit = new String(payloadMsg).split(";");
+
+            countAggPayloadsMsg += payloadMsgSplit.length;
+            
+            if (new String(packet.getPayload()).substring(0,1).equals("P")) {
+                /*log("Volume: " + txt + " count: " + count 
+                    + " tamanho: "+ packet.getPayload().length);*/
+                log("Traffic1: " + (packet.getPayload().length * countAggPayloadsMsg) 
+                    + " Battery P: " + String.valueOf(battery.getBatteryPercent() / 2.55)
+                    + " Battery L: " + String.valueOf(battery.getBatteryLevel())); 
+            }  
+
+            SDN_WISE_Callback(packet);
+            /*log("chegou no destino, origem : " + packet.getSrc() 
+                + " Com o conteudo: " + new String(packet.getPayload()) 
+                + " count: " + count + " tamanho: "+ packet.getPayload().length);*/
+            log("Traffic2: " + (packet.getPayload().length * countAggPayloadsMsg) 
+                + " Battery: " + String.valueOf(battery.getBatteryPercent() / 2.55)
+                + " Battery L: " + String.valueOf(battery.getBatteryLevel()));
+        
+        } else if (isAcceptedIdAddress(packet.getNxhop())) { 
+
+                if (new String(packet.getPayload()).substring(0,1).equals("P")) {
+                    CopyMessage(packet); //comentado para teste 07/03/2023
+
+                    packet.setTtl((byte) 0); //comentado para teste 07/03/2023
+                }
+                runFlowMatch(packet);
+            }
     }
 
     public void rxBeacon(BeaconPacket bp, int rssi) {
@@ -337,6 +330,7 @@ public abstract class AbstractMote extends AbstractApplicationMote {
         if (found == 0) { //!found
             // It's necessary to send a rule/request if we have done the lookup
             // I must modify the source address with myself,
+            //log("No Matched Rule - Packet: " + packet.toString());
             packet.setSrc(addr)
                     .setRequestFlag()
                     .setTtl(SDN_WISE_DFLT_TTL_MAX);
@@ -347,6 +341,8 @@ public abstract class AbstractMote extends AbstractApplicationMote {
     public abstract void rxConfig(ConfigPacket packet);
 
     public NodeAddress getActualSinkAddress() {
+        //log("Sink Addr Size: " + flowTable.size());
+        //log("getSinkAddr Window: " + flowTable.get(0).getWindows().toString());
         return new NodeAddress(flowTable.get(0).getWindows().get(0).getRhs());
     }
 
@@ -538,6 +534,7 @@ public abstract class AbstractMote extends AbstractApplicationMote {
                 controllerTX(prepareReport());
             }
 
+            //log("Updating Table: " + cntUpdTable + " / " + cnt_updtable_max);
             if ((cntUpdTable) >= cnt_updtable_max) {
                 cntUpdTable = 0;
                 updateTable();
@@ -559,6 +556,7 @@ public abstract class AbstractMote extends AbstractApplicationMote {
         toSink.addAction(new ForwardUnicastAction()
                 .setNextHop(addr));
         toSink.getStats().setPermanent();
+        //log("initFlowTable - First Rule pos 0: " + toSink.toString());
         flowTable.add(0, toSink);
 
         for (int i = 1; i < SDN_WISE_RLS_MAX; i++) {
@@ -594,6 +592,8 @@ public abstract class AbstractMote extends AbstractApplicationMote {
     private void rxOpenPath(OpenPathPacket opp) {
         if (isAcceptedIdPacket(opp)) {
             List<NodeAddress> path = opp.getPath();
+            //print path on console
+            //log("Path: " + path);
             for (int i = 0; i < path.size(); i++) {
                 NodeAddress actual = path.get(i);
                 if (isAcceptedIdAddress(actual)) {
@@ -695,6 +695,7 @@ public abstract class AbstractMote extends AbstractApplicationMote {
             if (packet.isRequest()) {
                 controllerTX(packet);
             } else {
+                //log("Packet type: " + packet.getType());
                 switch (packet.getType()) {
                     case SDN_WISE_DATA:
                         rxData(new DataPacket(packet));
@@ -783,7 +784,7 @@ public abstract class AbstractMote extends AbstractApplicationMote {
 
         new Thread(new PacketManager()).start();
         new Thread(new PacketSender()).start();
-        new Thread(new MensegerCreator()).start(); //gabrielgomes
+        new Thread(new MessageCreator()).start(); //gabrielgomes
         //new thread
         new Thread(new BatteryManager()).start(); 
     }
@@ -854,6 +855,7 @@ public abstract class AbstractMote extends AbstractApplicationMote {
     private void runAction(AbstractAction action, NetworkPacket np) {
         try {
             int action_type = action.getType();
+            //log("Action: " + action_type);
 
             switch (action_type) {
                 case SDN_WISE_FORWARD_U:
@@ -1015,6 +1017,7 @@ public abstract class AbstractMote extends AbstractApplicationMote {
                 int ttl = tmp.getStats().getTtl();
                 if (ttl != SDN_WISE_RL_TTL_PERMANENT) {
                     if (ttl >= SDN_WISE_RL_TTL_DECR) {
+                        //log("updateTable - Rule " + i + ":" + tmp.toString() + ". Decrementing TTL");
                         tmp.getStats().decrementTtl(SDN_WISE_RL_TTL_DECR);
                     } else {
                         flowTable.set(i, new FlowTableEntry());
@@ -1123,8 +1126,14 @@ public abstract class AbstractMote extends AbstractApplicationMote {
         }
     }
 
-    //Aqui a mensagem é criada
-    private class MensegerCreator implements Runnable {
+    /**
+     * Aqui a mensagem é criada
+     * 
+     * Trabalho original do aluno Gabriel Gomes
+     * 
+     * @author gabrielgomes
+    */
+    private class MessageCreator implements Runnable {
 
         @Override
         public void run() {
@@ -1139,13 +1148,13 @@ public abstract class AbstractMote extends AbstractApplicationMote {
 
                     String myAddr = addr.toString();
 
-                    String agregada = myAddr;
+                    String aggMessage = myAddr;
 
-                    for(byte[] mensagem : CopyPacket) {
-                        agregada = agregada + new String(mensagem,Charset.forName("UTF-8"));
+                    for(byte[] message : CopyPacket) {
+                        aggMessage = aggMessage + new String(message,Charset.forName("UTF-8"));
                     }
 
-                    log("antes da agg: " + agregada);
+                    log("antes da agg: " + aggMessage);
 
                     //retorno da taxa de agregação
                     int output = ComputeOutputPayload();
@@ -1155,7 +1164,7 @@ public abstract class AbstractMote extends AbstractApplicationMote {
                     
                     //log("mensagem: " + agregada);
 
-                    if (output == 1 && (agregada.contains(";P")) == false) {
+                    if (output == 1 && (aggMessage.contains(";P")) == false) {
 
                         p.setPayload(("P " + addr + ";")
                             .getBytes(Charset.forName("UTF-8")));
@@ -1165,14 +1174,14 @@ public abstract class AbstractMote extends AbstractApplicationMote {
 
                     } else {
 
-                        String texto = "";
+                        String newAggMessage = "";
 
-                        texto = agregada.substring(0, (output * 6)); //não usar o 6 e sim um delimitador
+                        newAggMessage = aggMessage.substring(0, (output * 6)); //não usar o 6 e sim um delimitador
 
-                        log("depois da agg: " + texto);
+                        log("depois da aggr: " + newAggMessage);
                         //+ "origem da mensagem: " + p.getSrc() + "trafego da mensagem anterior" + count * texto);
 
-                        p.setPayload((texto)
+                        p.setPayload((newAggMessage)
                             .getBytes(Charset.forName("UTF-8")));
 
                     }
@@ -1191,28 +1200,39 @@ public abstract class AbstractMote extends AbstractApplicationMote {
         }
     }
     
-    //Insere payload no buffer de agregação
-    public void CopyMenssage(DataPacket p) {       	
+    /**
+     * Insere payload no buffer de agregação
+     * 
+     *  Trabalho original do aluno Gabriel Gomes
+     * 
+     * @author gabrielgomes
+    */
+    public void CopyMessage(DataPacket p) {       	
         if(p.getDst() != addr){
             CopyPacket.add(p.getPayload());
 	    }
     }
 
+    /**
+     * Trabalho original do aluno Gabriel Gomes
+     * 
+     * @author gabrielgomes
+    */
     public int ComputeOutputPayload() {
         int input;
         float rate = 1 - getRate();     //Math.round(1 - getRate());
         int output;
-        String agregada = "";
+        String aggMessage = "";
 
-        for(byte[] mensagem : CopyPacket) {
-            agregada = agregada + new String(mensagem,Charset.forName("UTF-8"));
+        for(byte[] message : CopyPacket) {
+            aggMessage = aggMessage + new String(message,Charset.forName("UTF-8"));
         }        
 
-        String[] textoSeparado = agregada.split(";");
+        String[] messageSplit = aggMessage.split(";");
 
         //O input ele pega a quantidade de elementos(pacotes) que se tem no vetor.
         //O acrescimo de +1 é por conta de o input não contar com o próprio pacote criado pelo nó
-        input = (textoSeparado.length) + 1; 
+        input = (messageSplit.length) + 1; 
         
         output = Math.round(rate * input);
 
@@ -1227,10 +1247,19 @@ public abstract class AbstractMote extends AbstractApplicationMote {
         return output;
     }
 
+    /**
+     * This Thread controls which node is rechargeable setting the hasHarvest variable.
+     * It also controls the charging of the node. The thread sleeps for 5 minutes and
+     * then calls the rechargeBattery method. To keep track of reading the Solar Trace values
+     * it utilizes the rechargeStep and ciclePassed variable, incrementing them as need by
+     * the requirments of the simulation.
+     * 
+     * hasHaverst is set in the isRechargeable() method. The nodes are user defined by text file.
+     * (ids randomly selected by {@link}https://www.random.org/integer-sets/)
+     * 
+     * @author mjneto
+    */
     private class BatteryManager implements Runnable {
-        /**
-         * @author mjneto
-        */
 
         @Override
         public void run() {
@@ -1239,25 +1268,18 @@ public abstract class AbstractMote extends AbstractApplicationMote {
             int rechargeStep = 0;
             int ciclePassed = 0;
 
-            //select the rechargeable nodes
             hasHarvest = isRechargeable();
 
             //log(String.valueOf(hasHarvest));
 
             while (true) {
-                //check if node is rechargeable
-                if(hasHarvest) {
+                try {
+                    //300000 for 5 minutes, 150000 for 2.5 minutes, 5000 for 5 seconds
+                    Thread.sleep(150000);
 
-                    try {
-                        //Thread sleep for 5 minutes
-                        Thread.sleep(300000);
-                        
-                        //sleep for 5 seconds
-                        //Thread.sleep(5000);
+                    log("Time step: " + String.valueOf(rechargeStep * 2.5) + " min ("+ String.valueOf(rechargeStep) + ") / Day: " + String.valueOf(ciclePassed) + " / Battery: " + String.valueOf(battery.getBatteryLevel()));
 
-                        //log("Battery step: " + String.valueOf(rechargeStep) + " Day: " + String.valueOf(ciclePassed));
-
-                        //call rechargeBattery method and increment the rechargeStep
+                    if(hasHarvest) {
                         if(rechargeStep <= 287) {
                             battery.rechargeBattery(ciclePassed, rechargeStep);
                             rechargeStep++;
@@ -1270,23 +1292,27 @@ public abstract class AbstractMote extends AbstractApplicationMote {
                             rechargeStep = 0;
                             battery.rechargeBattery(ciclePassed, rechargeStep);
                         }
-                    } catch (InterruptedException ex) {
-                        log(ex.getLocalizedMessage());
                     }
+                } catch (InterruptedException ex) {
+                    log(ex.getLocalizedMessage());
                 }
             }
         }
 
-        //set a variable to simulate rechargeable nodes
         public boolean isRechargeable() {
-            //array with node ids who will be rechargeable (user defined)
-            int[] rechargeableNodes = {3, 5, 8, 10};
+            try {
+                BufferedReader reader = new BufferedReader(new FileReader("../examples/sdn-wise_java/rechargeableNodes.txt"));
+                String line = reader.readLine();
+                reader.close();
 
-            //check if node is rechargeable and set hasHarvest
-            for(int i = 0; i < rechargeableNodes.length; i++) {
-                if(addr.intValue() == rechargeableNodes[i]) {
+                String[] rechargeableNodes = line.split(" ");
+                //log("Node" + addr.intValue());
+                if(Arrays.asList(rechargeableNodes).contains(String.valueOf(addr.intValue()))) {
+                    //log("Node " + addr.intValue() + " is rechargeable");
                     return true;
                 }
+            } catch (Exception e) {
+                log(e.getLocalizedMessage());
             }
             return false;
         }

@@ -21,6 +21,9 @@ public class SolarTrace {
         //0h
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         //5h
         3.44600, 3.91900, 4.03200, 4.16100, 4.27100, 4.37800, 4.50400, 4.60100, 4.72200, 4.83900, 4.94100, 5.01900,
         5.08500, 5.17600, 5.26400, 5.36500, 5.50300, 5.63500, 5.76600, 5.88500, 5.99900, 6.16700, 6.32500, 6.48700,
@@ -107,8 +110,9 @@ public class SolarTrace {
 
     //return the value of solar trace in mC 
     public static double getSolarTraceValue(int cicle, int step) {
+        currentInCoulomb = calculateCurrent(cicle, step) * 150; //2.5 minutes
         //calculate the current in coulombs (current * time), time is 5 minutes in seconds
-        currentInCoulomb = calculateCurrent(cicle, step) * 300;
+        //currentInCoulomb = calculateCurrent(cicle, step) * 300;
         return currentInCoulomb / 1000;
     }
 
@@ -116,7 +120,8 @@ public class SolarTrace {
     public static double calculateCurrent(int cicle, int step) {
         double solarPanelEfficiency = 0.2; //20%
         double voltage = 0.2; //1/5v
-        double panelArea = 210; //cm2
+        double panelArea = 100; //cm2
+        //double panelArea = 210; //cm2
 
         return (SolarTraceInMW[cicle][step] * solarPanelEfficiency * voltage * panelArea);
     }

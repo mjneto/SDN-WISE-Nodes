@@ -51,13 +51,14 @@ public class Mote extends AbstractMote {
     @Override
     public void SDN_WISE_Callback(DataPacket packet) {
         if (this.functions.get(1) == null) {
+            log("Pck: " + new String(packet.getPayload(),Charset.forName("UTF-8")));
             packet.setSrc(addr)
                     .setDst(getActualSinkAddress())
                     .setTtl((byte) ttl_max);
 
             packet.setPayload(("P " + addr + ";").getBytes(Charset.forName("UTF-8")));
             
-            packet.setTtl((byte) 0);
+            //packet.setTtl((byte) 0); //comentado para teste 07/03/2023
 
             runFlowMatch(packet);
         } else {
@@ -92,15 +93,18 @@ public class Mote extends AbstractMote {
                 toSink.addWindow(Window.fromString("P.TYPE > 127"));
                 toSink.addAction(new ForwardUnicastAction()
                         .setNextHop(bp.getSrc()));
+                //log("rxBeaconMote - Creating new rule pos 0: " + toSink.toString());
                 flowTable.set(0, toSink);
 
                 setDistanceFromSink(bp.getDist() + 1);
                 setRssiSink(rssi);
             } else if ((bp.getDist() + 1) == this.getDistanceFromSink()
                     && getNextHopVsSink().equals(bp.getSrc())) {
+                //log("rxBeaconMote - Restoring TTL of rule 0: " + flowTable.get(0).toString());
                 flowTable.get(0).getStats().restoreTtl();
                 flowTable.get(0).getWindows().get(0)
                         .setRhs(bp.getSinkAddress().intValue());
+                //log("rxBeaconMote - Restored rule 0: " + flowTable.get(0).toString());
             }
             super.rxBeacon(bp, rssi);
         }
