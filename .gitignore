@@ -1,2 +1,4 @@
 build/
 simulations/
+testes/*
+#!testes/get_info.py

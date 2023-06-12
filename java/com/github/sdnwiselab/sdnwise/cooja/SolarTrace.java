@@ -1,21 +1,19 @@
 package com.github.sdnwiselab.sdnwise.cooja;
 /** 
      * This class represent a dataset of 288 values
-     * (1 value every 5 minutes per hour), which represent the solar irradiance,
+     * (1 value every given space of time), which represent the solar irradiance.
      * 
      * It utilizes a index of days and values to access the dataset,
      * which is incremented by 1 (max 3) after all values are used.
      * 
-     * The dataset is a 2D array of values in microWatts per square meter.
-     * It has a method to get the value of the dataset, converting it to
-     * microCoulombs per second.
+     * The dataset is a 2D array of values in microWatts/cm2.
+     * It has a method to get the value of the dataset and calculate the charge.
      * 
      * @author mjneto, André Riker
 */
 
 public class SolarTrace {
-    private static double currentInCoulomb;
-    private static double[][] SolarTraceInMW = {
+    private static double[][] solarTraceSet = {
         //values in microwatt/cm2, each line is a day and each day has 288 values
         { //day 1 (line 1)
         //0h
@@ -108,21 +106,28 @@ public class SolarTrace {
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, //23h
     }};
 
-    //return the value of solar trace in mC 
-    public static double getSolarTraceValue(int cicle, int step) {
-        currentInCoulomb = calculateCurrent(cicle, step) * 150; //2.5 minutes
-        //calculate the current in coulombs (current * time), time is 5 minutes in seconds
-        //currentInCoulomb = calculateCurrent(cicle, step) * 300;
-        return currentInCoulomb / 1000;
-    }
+    /**
+     * This method determine the charge of the solar panel in miliCoulumb.
+     * First it calculates the potency (P) using the formula: Potency (mW/cm2) = (irradiance (microwatt/cm2) * solar panel efficiency (%) * panel area(cm2)) / 1000.
+     * Then it calculates the current (I) using the formula: Current (mA) = Potency (mW/cm2) / Voltage (V).
+     * Finally it calculates the charge (Q) using the formula: Charge (mC) = Current (mA) * Time (s).
+     * 
+     * @param cicle which set is being used
+     * @param step index of value in the array
+     * @return charge (mC)
+     */
+    public static double getSolarCharge(int cicle, int step) {
+        //Potency
+        double panelEff = 0.20; //20%
+        double panelArea = 210; //cm2
+        double potency = (solarTraceSet[cicle][step] * panelEff * panelArea)/1000;
 
-    //calcuate current = solar trace value * solar panel efficiency * voltage * panel area
-    public static double calculateCurrent(int cicle, int step) {
-        double solarPanelEfficiency = 0.2; //20%
+        //Current
         double voltage = 0.2; //1/5v
-        double panelArea = 100; //cm2
-        //double panelArea = 210; //cm2
+        double current = potency / voltage;
 
-        return (SolarTraceInMW[cicle][step] * solarPanelEfficiency * voltage * panelArea);
+        //Charge
+        double time = 150; //2.5m = 150s, 5m = 300s
+        return (current * time);
     }
 }

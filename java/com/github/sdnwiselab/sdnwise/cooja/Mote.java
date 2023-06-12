@@ -57,6 +57,7 @@ public class Mote extends AbstractMote {
                     .setTtl((byte) ttl_max);
 
             packet.setPayload(("P " + addr + ";").getBytes(Charset.forName("UTF-8")));
+            log("Pck2: " + new String(packet.getPayload(),Charset.forName("UTF-8")));
             
             //packet.setTtl((byte) 0); //comentado para teste 07/03/2023
 

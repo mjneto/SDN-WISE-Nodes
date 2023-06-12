@@ -207,6 +207,11 @@ public abstract class AbstractMote extends AbstractApplicationMote {
         ttl_max = SDN_WISE_DFLT_TTL_MAX;
 
         battery = new Battery();
+        //set the battery level to 85% of the maximum
+        //battery.setBatteryLevel(battery.getBatteryLevel() * 85 / 100);
+        //set the battery level to 15% of the maximum
+        battery.setBatteryLevel(battery.getBatteryLevel() * 15 / 100);
+
         flow_table_free_pos = 1;
         accepted_id_free_pos = 0;
     }
@@ -244,19 +249,19 @@ public abstract class AbstractMote extends AbstractApplicationMote {
 
     public final void rxData(DataPacket packet) {
         /* Aqui a cópia da mensagem é feita para o buffer de agregação
- *
+         *
          * mensagem do controlador
- *
+         *
          * O Ttl é 0 para que a mensagem inicial do nó seja exluida
          *
          * Agregação de dados ao receber o pacote (rxData()) por Gabriel Gomes
- */
+        */
+        log("MsgArrived:" + new String(packet.getPayload()) + "\t" + "countMsgPayload:" + String.valueOf(countAggPayloadsMsg) +"\t"+ "Src:" + packet.getSrc() +"\t"+ "Dst:" + packet.getDst());
         if (packet.getDst().equals(addr)){
             //log("chegou no destino, origem: " + packet.getSrc() + " Com o conteudo: " + new String(packet.getPayload()));
-            
             if(new String(packet.getPayload()).substring(0,3).equals("Agg")){
                 String rateCtrl = new String(packet.getPayload()).split(":")[1];
-                //log("Agg: " + Float.parseFloat(txt[1]));
+                //log("Agg: " + Float.parseFloat(rateCtrl));
                 setRate(Float.parseFloat(rateCtrl));
             }
         }
@@ -787,6 +792,7 @@ public abstract class AbstractMote extends AbstractApplicationMote {
         new Thread(new MessageCreator()).start(); //gabrielgomes
         //new thread
         new Thread(new BatteryManager()).start(); 
+        new Thread(new LogTest()).start(); 
     }
 
     private int getOperand(NetworkPacket packet, int size, int location, int value) {
@@ -1211,6 +1217,7 @@ public abstract class AbstractMote extends AbstractApplicationMote {
         if(p.getDst() != addr){
             CopyPacket.add(p.getPayload());
 	    }
+        log("mensagem copiada: " + new String(p.getPayload(),Charset.forName("UTF-8")));
     }
 
     /**
@@ -1249,7 +1256,7 @@ public abstract class AbstractMote extends AbstractApplicationMote {
 
     /**
      * This Thread controls which node is rechargeable setting the hasHarvest variable.
-     * It also controls the charging of the node. The thread sleeps for 5 minutes and
+     * It also controls the charging of the node. The thread sleeps for given minutes and
      * then calls the rechargeBattery method. To keep track of reading the Solar Trace values
      * it utilizes the rechargeStep and ciclePassed variable, incrementing them as need by
      * the requirments of the simulation.
@@ -1264,38 +1271,36 @@ public abstract class AbstractMote extends AbstractApplicationMote {
         @Override
         public void run() {
 
+            int advanceStep = 144;
             boolean hasHarvest;
             int rechargeStep = 0;
-            int ciclePassed = 0;
+            int ciclePassed = 1;
 
             hasHarvest = isRechargeable();
 
             //log(String.valueOf(hasHarvest));
 
-            while (true) {
-                try {
-                    //300000 for 5 minutes, 150000 for 2.5 minutes, 5000 for 5 seconds
-                    Thread.sleep(150000);
-
-                    log("Time step: " + String.valueOf(rechargeStep * 2.5) + " min ("+ String.valueOf(rechargeStep) + ") / Day: " + String.valueOf(ciclePassed) + " / Battery: " + String.valueOf(battery.getBatteryLevel()));
-
+            try {
+                //sleep for 30 minutes before starting the charging, then charge for 1 hour
+                Thread.sleep(1800000);
+                
+                while (true) {
                     if(hasHarvest) {
-                        if(rechargeStep <= 287) {
-                            battery.rechargeBattery(ciclePassed, rechargeStep);
+                        if(rechargeStep <= 24) {
+                            battery.rechargeBattery(ciclePassed, rechargeStep+advanceStep);
                             rechargeStep++;
-                        } else if (ciclePassed < 3) {
-                            ciclePassed++;
-                            rechargeStep = 0;
-                            battery.rechargeBattery(ciclePassed, rechargeStep);
                         } else {
-                            ciclePassed = 0;
-                            rechargeStep = 0;
-                            battery.rechargeBattery(ciclePassed, rechargeStep);
+                            break;
                         }
                     }
-                } catch (InterruptedException ex) {
-                    log(ex.getLocalizedMessage());
+                    log("Time step: " + String.valueOf((rechargeStep-1) * 2.5) + " min elapsed (" + String.valueOf((rechargeStep+advanceStep)-1) +
+                    ") / Day: " + String.valueOf(ciclePassed));
+                    
+                    //300000ms = 5m, 150000ms = 2.5m
+                    Thread.sleep(150000);
                 }
+            } catch (InterruptedException ex) {
+                log(ex.getLocalizedMessage());
             }
         }
 
@@ -1315,6 +1320,32 @@ public abstract class AbstractMote extends AbstractApplicationMote {
                 log(e.getLocalizedMessage());
             }
             return false;
+        }
+    }
+
+    /**
+     * A test thread who gets the the Battery level and and simulation time
+     * every 5 minutes and print it to the console.
+     * 
+     * Just for testing purposes.
+     */
+
+    private class LogTest implements Runnable {
+        @Override
+        public void run() {
+            try {
+                while (true) {
+                    //Thread sleep for 5m and 200ms to avoid the simulation time to be the same and overlap
+                    Thread.sleep(200);
+                    log("Battery:" + String.valueOf(battery.getBatteryPercent() / 2.55) +
+                    "\t" + "TimeSimulation:" + String.valueOf(simulation.getSimulationTimeMillis() / 1000) +
+                    "\t" + "Rate:" + String.valueOf(1-getRate()) +
+                    "\t" + "BatteryLevel:" + String.valueOf(battery.getBatteryLevel()));
+                    Thread.sleep(300000);
+                }
+            } catch (InterruptedException ex) {
+                log(ex.getLocalizedMessage());
+            }
         }
     }
 }
